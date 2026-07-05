@@ -1,0 +1,9 @@
+placeholder - upload wireguard-installer.exe to this folder on VPS
+
+VPS command:
+  mkdir -p /opt/CivLan/CivLan-Server/wwwroot/assets
+  wget -O /opt/CivLan/CivLan-Server/wwwroot/assets/wireguard-installer.exe https://download.wireguard.com/wireguard-installer.exe
+  sudo systemctl restart civlan
+
+Client download URL:
+  http://YOUR_VPS_IP:5199/assets/wireguard-installer.exe

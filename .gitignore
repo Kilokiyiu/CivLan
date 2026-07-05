@@ -1,0 +1,24 @@
+bin/
+obj/
+publish/
+publish-*/
+client-release/
+data/
+**/data/
+*.user
+.vs/
+*.conf
+
+# Secrets & local config (never commit)
+**/appsettings.local.json
+**/appsettings.Production.json
+**/server-secrets.json
+**/rooms.json
+
+# WireGuard binaries (GPLv2, obtain separately)
+src/CivLan.Client/wireguard/*
+!src/CivLan.Client/wireguard/README.md
+
+# OS
+Thumbs.db
+.DS_Store
