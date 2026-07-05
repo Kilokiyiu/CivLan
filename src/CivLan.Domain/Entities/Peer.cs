@@ -12,6 +12,7 @@ public sealed class Peer
     public VirtualIpAddress VirtualIp { get; private set; } = VirtualIpAddress.Create("10.0.0.2");
     public string AccessToken { get; private set; } = string.Empty;
     public DateTime JoinedAt { get; private set; }
+    public DateTime LastSeenAt { get; private set; }
     public bool IsOnline { get; private set; }
 
     private Peer()
@@ -39,9 +40,19 @@ public sealed class Peer
             VirtualIp = virtualIp,
             AccessToken = accessToken,
             JoinedAt = DateTime.UtcNow,
+            LastSeenAt = DateTime.UtcNow,
             IsOnline = true
         };
     }
+
+    public void Touch()
+    {
+        LastSeenAt = DateTime.UtcNow;
+        IsOnline = true;
+    }
+
+    public bool IsStale(TimeSpan inactiveFor) =>
+        DateTime.UtcNow - LastSeenAt > inactiveFor;
 
     public void MarkOnline() => IsOnline = true;
 

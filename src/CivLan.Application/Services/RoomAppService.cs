@@ -52,13 +52,33 @@ public sealed class RoomAppService
             creator.AccessToken);
     }
 
-    public async Task<JoinRoomResultDto> JoinRoomAsync(string roomCode, string playerName, CancellationToken cancellationToken = default)
+    public async Task<JoinRoomResultDto> JoinRoomAsync(
+        string roomCode,
+        string playerName,
+        string? accessToken = null,
+        CancellationToken cancellationToken = default)
     {
         await _wireGuardConfigurator.EnsureServerKeysAsync(cancellationToken);
 
         var code = RoomCode.Create(roomCode);
         var room = await _roomRepository.GetByCodeAsync(code, cancellationToken)
                    ?? throw new DomainException("Room not found.");
+
+        room.EvictStalePeers(Room.DefaultStalePeerTimeout);
+
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            var existing = room.FindPeerByToken(accessToken);
+            if (existing is not null)
+            {
+                existing.Touch();
+                await _roomRepository.SaveAsync(room, cancellationToken);
+                return new JoinRoomResultDto(
+                    MapRoomDetail(room, existing.Id),
+                    BuildClientConfig(room, existing),
+                    existing.AccessToken);
+            }
+        }
 
         var keyPair = await CreateKeyPairAsync(cancellationToken);
         var token = _tokenGenerator.Generate();
@@ -80,6 +100,14 @@ public sealed class RoomAppService
         var room = await _roomRepository.GetByCodeAsync(code, cancellationToken)
                    ?? throw new DomainException("Room not found.");
 
+        room.EvictStalePeers(Room.DefaultStalePeerTimeout);
+        if (room.Status == RoomStatus.Closed)
+        {
+            await _roomRepository.DeleteAsync(code, cancellationToken);
+            throw new DomainException("Room not found.");
+        }
+
+        await _roomRepository.SaveAsync(room, cancellationToken);
         return MapRoomDetail(room, null);
     }
 
@@ -104,7 +132,30 @@ public sealed class RoomAppService
         var peer = room.FindPeerByToken(accessToken)
                    ?? throw new DomainException("Invalid access token.");
 
+        peer.Touch();
+        await _roomRepository.SaveAsync(room, cancellationToken);
+
         return BuildClientConfig(room, peer);
+    }
+
+    public async Task HeartbeatAsync(string roomCode, string accessToken, CancellationToken cancellationToken = default)
+    {
+        var code = RoomCode.Create(roomCode);
+        var room = await _roomRepository.GetByCodeAsync(code, cancellationToken)
+                   ?? throw new DomainException("Room not found.");
+
+        var peer = room.FindPeerByToken(accessToken)
+                   ?? throw new DomainException("Invalid access token.");
+
+        peer.Touch();
+        room.EvictStalePeers(Room.DefaultStalePeerTimeout);
+        if (room.Status == RoomStatus.Closed)
+        {
+            await _roomRepository.DeleteAsync(code, cancellationToken);
+            return;
+        }
+
+        await _roomRepository.SaveAsync(room, cancellationToken);
     }
 
     public async Task<RoomDetailDto> SetHostAsync(

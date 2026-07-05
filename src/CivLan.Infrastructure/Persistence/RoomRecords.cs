@@ -21,6 +21,7 @@ public sealed class PeerRecord
     public string VirtualIp { get; set; } = string.Empty;
     public string AccessToken { get; set; } = string.Empty;
     public DateTime JoinedAt { get; set; }
+    public DateTime LastSeenAt { get; set; }
     public bool IsOnline { get; set; }
 }
 

@@ -33,11 +33,29 @@ public sealed class CivLanApiClient
         return (await response.Content.ReadFromJsonAsync<CreateRoomResponse>(JsonOptions))!;
     }
 
-    public async Task<JoinRoomResponse> JoinRoomAsync(string roomCode, string playerName)
+    public async Task<JoinRoomResponse> JoinRoomAsync(string roomCode, string playerName, string? accessToken = null)
     {
-        var response = await _httpClient.PostAsJsonAsync($"api/rooms/{roomCode}/join", new { playerName });
+        var response = await _httpClient.PostAsJsonAsync(
+            $"api/rooms/{roomCode}/join",
+            new { playerName, accessToken });
         await EnsureSuccessAsync(response);
         return (await response.Content.ReadFromJsonAsync<JoinRoomResponse>(JsonOptions))!;
+    }
+
+    public async Task LeaveRoomAsync(string roomCode, string accessToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"api/rooms/{roomCode}/leave",
+            new { accessToken });
+        await EnsureSuccessAsync(response);
+    }
+
+    public async Task SendHeartbeatAsync(string roomCode, string accessToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"api/rooms/{roomCode}/heartbeat",
+            new { accessToken });
+        await EnsureSuccessAsync(response);
     }
 
     public async Task<RoomDetailResponse> GetRoomAsync(string roomCode)

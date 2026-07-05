@@ -77,7 +77,7 @@ app.MapPost("/api/rooms", async ([FromBody] CreateRoomRequest request, RoomAppSe
 app.MapPost("/api/rooms/{code}/join", async (string code, [FromBody] JoinRoomRequest request, RoomAppService service, CancellationToken ct) =>{
     try
     {
-        var result = await service.JoinRoomAsync(code, request.PlayerName, ct);
+        var result = await service.JoinRoomAsync(code, request.PlayerName, request.AccessToken, ct);
         return Results.Ok(result);
     }
     catch (DomainException ex)
@@ -122,6 +122,18 @@ app.MapPost("/api/rooms/{code}/leave", async (string code, [FromBody] TokenReque
     }
 });
 
+app.MapPost("/api/rooms/{code}/heartbeat", async (string code, [FromBody] TokenRequest request, RoomAppService service, CancellationToken ct) =>{
+    try
+    {
+        await service.HeartbeatAsync(code, request.AccessToken, ct);
+        return Results.Ok(new { message = "ok" });
+    }
+    catch (DomainException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.MapDelete("/api/rooms/{code}", async (string code, [FromBody] TokenRequest request, RoomAppService service, CancellationToken ct) =>{
     try
     {
@@ -137,6 +149,6 @@ app.MapDelete("/api/rooms/{code}", async (string code, [FromBody] TokenRequest r
 app.Run();
 
 internal sealed record CreateRoomRequest(string RoomName, string PlayerName);
-internal sealed record JoinRoomRequest(string PlayerName);
+internal sealed record JoinRoomRequest(string PlayerName, string? AccessToken = null);
 internal sealed record TokenRequest(string AccessToken);
 internal sealed record SetHostRequest(string AccessToken, Guid HostPeerId);

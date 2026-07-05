@@ -7,6 +7,7 @@ namespace CivLan.Domain.Entities;
 public sealed class Room
 {
     public const int MaxPlayers = 4;
+    public static readonly TimeSpan DefaultStalePeerTimeout = TimeSpan.FromMinutes(3);
 
     public Guid Id { get; private set; }
     public RoomCode Code { get; private set; } = RoomCode.Create("AAAAAA");
@@ -44,16 +45,36 @@ public sealed class Room
 
     public Peer AddPeer(string displayName, WireGuardKeyPair keyPair, VirtualIpAddress virtualIp, string accessToken)
     {
+        return AddPeer(displayName, keyPair, virtualIp, accessToken, DefaultStalePeerTimeout);
+    }
+
+    public Peer AddPeer(
+        string displayName,
+        WireGuardKeyPair keyPair,
+        VirtualIpAddress virtualIp,
+        string accessToken,
+        TimeSpan stalePeerTimeout)
+    {
         EnsureOpen();
+        EvictStalePeers(stalePeerTimeout);
+
         if (_peers.Count >= MaxPlayers)
             throw new DomainException($"Room is full (max {MaxPlayers} players).");
 
-        if (_peers.Any(p => p.DisplayName.Equals(displayName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        var trimmedName = displayName.Trim();
+        if (_peers.Any(p => p.DisplayName.Equals(trimmedName, StringComparison.OrdinalIgnoreCase)))
             throw new DomainException("Player name already exists in this room.");
 
         var peer = Peer.Create(displayName, keyPair, virtualIp, accessToken);
         _peers.Add(peer);
         return peer;
+    }
+
+    public void EvictStalePeers(TimeSpan inactiveFor)
+    {
+        var stalePeerIds = _peers.Where(p => p.IsStale(inactiveFor)).Select(p => p.Id).ToList();
+        foreach (var peerId in stalePeerIds)
+            RemovePeer(peerId);
     }
 
     public Peer? FindPeer(Guid peerId) => _peers.FirstOrDefault(p => p.Id == peerId);

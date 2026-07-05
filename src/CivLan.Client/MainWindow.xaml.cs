@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CivLan.Client.Services;
 using Microsoft.Win32;
 
@@ -9,6 +10,8 @@ public partial class MainWindow : Window
 {
     private CivLanApiClient? _client;
     private readonly WireGuardTunnelManager _tunnelManager = new();
+    private DispatcherTimer? _heartbeatTimer;
+    private bool _isClosing;
     private string? _currentRoomCode;
     private string? _currentAccessToken;
     private string? _currentHostIp;
@@ -24,6 +27,7 @@ public partial class MainWindow : Window
             "4. 在文明6中使用「局域网」或「IP 直连」加入主机";
 
         Loaded += (_, _) => UpdateVpnStatus();
+        Closing += MainWindow_Closing;
     }
 
     private CivLanApiClient GetClient()
@@ -68,6 +72,8 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new InvalidOperationException("请填写昵称。");
 
+            await LeaveCurrentRoomIfAnyAsync();
+
             var result = await GetClient().CreateRoomAsync(roomName, playerName);
             ApplySession(result.Room.Code, result.AccessToken, result.WireGuard);
 
@@ -104,7 +110,14 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new InvalidOperationException("请填写昵称。");
 
-            var result = await GetClient().JoinRoomAsync(roomCode, playerName);
+            var rejoinToken = string.Equals(_currentRoomCode, roomCode, StringComparison.OrdinalIgnoreCase)
+                ? _currentAccessToken
+                : null;
+
+            if (rejoinToken is null)
+                await LeaveCurrentRoomIfAnyAsync();
+
+            var result = await GetClient().JoinRoomAsync(roomCode, playerName, rejoinToken);
             ApplySession(result.Room.Code, result.AccessToken, result.WireGuard);
 
             var connectNow = MessageBox.Show(
@@ -271,6 +284,87 @@ public partial class MainWindow : Window
         WireGuardConfigTextBox.Text = wireGuard.ConfigText;
         JoinRoomCodeTextBox.Text = roomCode;
         UpdateVpnStatus();
+        StartHeartbeat();
+    }
+
+    private void ClearSession()
+    {
+        StopHeartbeat();
+        _currentRoomCode = null;
+        _currentAccessToken = null;
+        _currentHostIp = null;
+        _currentConfigText = null;
+        RoomCodeTextBlock.Text = "-";
+        VirtualIpTextBlock.Text = "-";
+        HostIpTextBlock.Text = "-";
+        UpdateVpnStatus();
+    }
+
+    private void StartHeartbeat()
+    {
+        _heartbeatTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(45) };
+        _heartbeatTimer.Tick -= HeartbeatTimer_Tick;
+        _heartbeatTimer.Tick += HeartbeatTimer_Tick;
+        if (!_heartbeatTimer.IsEnabled)
+            _heartbeatTimer.Start();
+    }
+
+    private void StopHeartbeat()
+    {
+        _heartbeatTimer?.Stop();
+    }
+
+    private async void HeartbeatTimer_Tick(object? sender, EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentRoomCode) || string.IsNullOrWhiteSpace(_currentAccessToken))
+            return;
+
+        try
+        {
+            await GetClient().SendHeartbeatAsync(_currentRoomCode, _currentAccessToken);
+        }
+        catch
+        {
+            // Ignore transient heartbeat failures.
+        }
+    }
+
+    private async Task LeaveCurrentRoomIfAnyAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentRoomCode) || string.IsNullOrWhiteSpace(_currentAccessToken))
+            return;
+
+        var roomCode = _currentRoomCode;
+        var accessToken = _currentAccessToken;
+        ClearSession();
+
+        await _tunnelManager.DisconnectAsync(roomCode, suppressErrors: true);
+        await GetClient().LeaveRoomAsync(roomCode, accessToken);
+    }
+
+    private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_isClosing)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_currentRoomCode) || string.IsNullOrWhiteSpace(_currentAccessToken))
+            return;
+
+        e.Cancel = true;
+        _isClosing = true;
+
+        try
+        {
+            await LeaveCurrentRoomIfAnyAsync();
+        }
+        catch
+        {
+            // Best effort when exiting.
+        }
+        finally
+        {
+            Close();
+        }
     }
 
     private void UpdateVpnStatus()

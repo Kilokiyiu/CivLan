@@ -122,6 +122,7 @@ public sealed class JsonRoomRepository : IRoomRepository
         SetProperty(peer, nameof(Peer.VirtualIp), VirtualIpAddress.Create(record.VirtualIp));
         SetProperty(peer, nameof(Peer.AccessToken), record.AccessToken);
         SetProperty(peer, nameof(Peer.JoinedAt), record.JoinedAt);
+        SetProperty(peer, nameof(Peer.LastSeenAt), record.LastSeenAt == default ? record.JoinedAt : record.LastSeenAt);
         SetProperty(peer, nameof(Peer.IsOnline), record.IsOnline);
         return peer;
     }
@@ -144,6 +145,7 @@ public sealed class JsonRoomRepository : IRoomRepository
             VirtualIp = p.VirtualIp.Value,
             AccessToken = p.AccessToken,
             JoinedAt = p.JoinedAt,
+            LastSeenAt = p.LastSeenAt,
             IsOnline = p.IsOnline
         }).ToList()
     };
