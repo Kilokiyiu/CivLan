@@ -2,7 +2,7 @@
 
 **Civilization VI virtual LAN multiplayer assistant — built-in WireGuard, no separate VPN client required.**
 
-文明6 虚拟局域网联机助手。通过 WireGuard 在 VPS 上组网，解决 NAT / 直连困难；Windows 客户端内置 VPN，队友无需单独安装 WireGuard。
+文明6 虚拟局域网联机助手。通过 WireGuard 在 VPS 上组网，解决 NAT / 直连困难。
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/Server-Ubuntu-blue)](https://ubuntu.com/)

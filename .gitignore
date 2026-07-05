@@ -1,24 +1,129 @@
-bin/
-obj/
+## Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
 publish/
 publish-*/
+publish-linux/
 client-release/
+public/
+out/
+artifacts/
+
+## .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+## Visual Studio / Rider / VS Code
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.rsuser
+.idea/
+*.DotSettings.user
+
+## Test & coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+coverage/
+*.coverage
+*.coveragexml
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+## CivLan runtime data (never commit)
 data/
 **/data/
-*.user
-.vs/
-*.conf
-
-# Secrets & local config (never commit)
-**/appsettings.local.json
-**/appsettings.Production.json
 **/server-secrets.json
 **/rooms.json
+*.conf
 
-# WireGuard binaries (GPLv2, obtain separately)
+## Secrets & local config (never commit)
+**/appsettings.local.json
+**/appsettings.Production.json
+**/appsettings.*.local.json
+secrets.json
+.env
+.env.*
+!.env.example
+
+## WireGuard binaries (GPLv2 — obtain separately, see wireguard/README.md)
 src/CivLan.Client/wireguard/*
 !src/CivLan.Client/wireguard/README.md
 
-# OS
+## Release archives
+*.zip
+*.7z
+*.tar.gz
+!deploy/**
+
+## OS generated
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+## Windows Installer / dump
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.stackdump
+
+## JetBrains
+*.sln.iml
+
+## Misc
+*.bak
+*.swp
+*~
