@@ -232,8 +232,8 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "WireGuard 安装包 (wireguard-installer.exe)|wireguard-installer.exe|所有文件 (*.*)|*.*",
-            Title = "选择 WireGuard 安装包"
+            Filter = "WireGuard 离线安装包 (*.msi)|*.msi|WireGuard 安装包 (*.exe)|*.exe|所有文件 (*.*)|*.*",
+            Title = "选择 WireGuard 安装包（推荐 wireguard-amd64.msi）"
         };
 
         if (dialog.ShowDialog() != true)

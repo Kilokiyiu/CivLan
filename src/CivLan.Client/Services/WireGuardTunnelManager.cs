@@ -7,7 +7,6 @@ namespace CivLan.Client.Services;
 
 public sealed class WireGuardTunnelManager
 {
-    private const string WireGuardInstallerUrl = "https://download.wireguard.com/wireguard-installer.exe";
     private const string WireGuardManagerService = "WireGuardManager";
     private static readonly string ProgramFilesExe = @"C:\Program Files\WireGuard\wireguard.exe";
     private static readonly string AppRoot = Path.Combine(
@@ -39,8 +38,8 @@ public sealed class WireGuardTunnelManager
             return;
         }
 
-        var bundledInstaller = Path.Combine(BundledDir, "wireguard-installer.exe");
-        if (File.Exists(bundledInstaller))
+        var bundledInstaller = FindOfflinePlatformInstaller(BundledDir);
+        if (bundledInstaller is not null)
         {
             progress?.Report("正在安装 WireGuard 驱动（仅首次，需管理员权限）...");
             await InstallFromInstallerAsync(bundledInstaller, progress);
@@ -48,7 +47,7 @@ public sealed class WireGuardTunnelManager
         }
 
         progress?.Report("正在获取 WireGuard 安装包...");
-        var installerPath = await DownloadInstallerAsync(serverBaseUrl, progress);
+        var installerPath = await DownloadPlatformInstallerAsync(serverBaseUrl, progress);
         await InstallFromInstallerAsync(installerPath, progress);
     }
 
@@ -58,7 +57,8 @@ public sealed class WireGuardTunnelManager
             throw new FileNotFoundException("找不到 WireGuard 安装包。", installerPath);
 
         Directory.CreateDirectory(BinDir);
-        var cachedInstaller = Path.Combine(BinDir, "wireguard-installer.exe");
+        var fileName = Path.GetFileName(installerPath);
+        var cachedInstaller = Path.Combine(BinDir, fileName);
         if (!string.Equals(Path.GetFullPath(installerPath), Path.GetFullPath(cachedInstaller), StringComparison.OrdinalIgnoreCase))
             File.Copy(installerPath, cachedInstaller, overwrite: true);
 
@@ -163,25 +163,26 @@ public sealed class WireGuardTunnelManager
 
         progress?.Report("首次使用，正在安装 WireGuard 驱动（需管理员权限，仅一次）...");
 
-        var installerCandidates = new[]
-        {
-            Path.Combine(BundledDir, "wireguard-installer.exe"),
-            Path.Combine(BinDir, "wireguard-installer.exe")
-        };
+        var offlineInstaller = FindOfflinePlatformInstaller(BundledDir)
+                               ?? FindOfflinePlatformInstaller(BinDir);
 
-        foreach (var installer in installerCandidates)
+        if (offlineInstaller is not null)
         {
-            if (!File.Exists(installer))
-                continue;
-
-            await InstallFromInstallerAsync(installer, progress);
+            await InstallFromInstallerAsync(offlineInstaller, progress);
             if (IsServiceInstalled(WireGuardManagerService))
                 return;
+        }
+        else if (File.Exists(Path.Combine(BundledDir, "wireguard.exe")))
+        {
+            throw new InvalidOperationException(
+                "Release 包缺少离线驱动安装包 wireguard-amd64.msi。\n\n" +
+                "仅有 wireguard.exe 无法在新电脑上安装驱动；85KB 的 wireguard-installer.exe 需联网，国内会失败。\n" +
+                "请服主重新打包：在 wireguard 文件夹加入 wireguard-amd64.msi 后发布新版 Client。");
         }
 
         try
         {
-            var downloaded = await DownloadInstallerAsync(serverBaseUrl, progress);
+            var downloaded = await DownloadPlatformInstallerAsync(serverBaseUrl, progress);
             await InstallFromInstallerAsync(downloaded, progress);
         }
         catch
@@ -193,8 +194,31 @@ public sealed class WireGuardTunnelManager
         {
             throw new InvalidOperationException(
                 "WireGuard 驱动尚未安装。\n\n" +
-                "请在本机双击运行一次 wireguard\\wireguard-installer.exe 完成驱动安装，然后再点「连接 VPN」。");
+                "Release 包需包含 wireguard\\wireguard.exe 与 wireguard-amd64.msi（离线安装包）。\n" +
+                "服主请重新打包客户端，或手动运行 wireguard 目录下的 .msi 安装驱动。");
         }
+    }
+
+    /// <summary>
+    /// Prefer full offline MSI. Skip 85KB online stub installer (fails without internet in CN).
+    /// </summary>
+    private static string? FindOfflinePlatformInstaller(string directory)
+    {
+        if (!Directory.Exists(directory))
+            return null;
+
+        var msi = Directory.GetFiles(directory, "wireguard*.msi")
+            .Concat(Directory.GetFiles(directory, "*.msi"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+        if (msi is not null)
+            return msi;
+
+        var exe = Path.Combine(directory, "wireguard-installer.exe");
+        if (File.Exists(exe) && new FileInfo(exe).Length > 512 * 1024)
+            return exe;
+
+        return null;
     }
 
     private static bool IsServiceInstalled(string serviceName)
@@ -272,44 +296,40 @@ public sealed class WireGuardTunnelManager
         return File.Exists(GetWireGuardExePath()) || File.Exists(bundledExe);
     }
 
-    private async Task<string> DownloadInstallerAsync(string? serverBaseUrl, IProgress<string>? progress)
+    private async Task<string> DownloadPlatformInstallerAsync(string? serverBaseUrl, IProgress<string>? progress)
     {
-        var installerPath = Path.Combine(BinDir, "wireguard-installer.exe");
         var errors = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(serverBaseUrl))
         {
-            try
+            var baseUrl = serverBaseUrl.TrimEnd('/');
+            foreach (var name in new[] { "wireguard-amd64.msi", "wireguard-x86.msi" })
             {
-                var mirrorUrl = $"{serverBaseUrl.TrimEnd('/')}/assets/wireguard-installer.exe";
-                progress?.Report($"正在从 CivLan 服务器下载...\n{mirrorUrl}");
-                await DownloadFileAsync(mirrorUrl, installerPath);
-                return installerPath;
+                try
+                {
+                    var dest = Path.Combine(BinDir, name);
+                    var mirrorUrl = $"{baseUrl}/assets/{name}";
+                    progress?.Report($"正在从 CivLan 服务器下载...\n{mirrorUrl}");
+                    await DownloadFileAsync(mirrorUrl, dest, requireMsiSize: true);
+                    return dest;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{name}: {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                errors.Add($"CivLan 服务器: {ex.Message}");
-            }
-        }
-
-        try
-        {
-            progress?.Report("正在从 WireGuard 官方下载...");
-            await DownloadFileAsync(WireGuardInstallerUrl, installerPath);
-            return installerPath;
-        }
-        catch (Exception ex)
-        {
-            errors.Add($"官方源: {ex.Message}");
         }
 
         throw new InvalidOperationException(
-            "无法获取 WireGuard 安装包。\n\n" +
+            "无法获取 WireGuard 离线安装包 (MSI)。\n\n" +
             string.Join("\n", errors) +
-            "\n\n请使用软件目录 wireguard\\wireguard-installer.exe，或点击「手动选择安装包」。");
+            "\n\n请在 Release 的 wireguard 目录中包含 wireguard-amd64.msi。");
     }
 
-    private async Task DownloadFileAsync(string url, string destinationPath)
+    private async Task<string> DownloadInstallerAsync(string? serverBaseUrl, IProgress<string>? progress) =>
+        await DownloadPlatformInstallerAsync(serverBaseUrl, progress);
+
+    private async Task DownloadFileAsync(string url, string destinationPath, bool requireMsiSize = false)
     {
         using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
@@ -318,14 +338,25 @@ public sealed class WireGuardTunnelManager
         await using var file = File.Create(destinationPath);
         await stream.CopyToAsync(file);
 
-        if (new FileInfo(destinationPath).Length < 10 * 1024)
+        var minSize = requireMsiSize ? 512 * 1024 : 10 * 1024;
+        if (new FileInfo(destinationPath).Length < minSize)
             throw new InvalidOperationException("下载的文件大小异常。");
     }
 
     private async Task InstallFromInstallerAsync(string installerPath, IProgress<string>? progress)
     {
         progress?.Report("正在安装 WireGuard 驱动（请允许管理员权限）...");
-        var exitCode = RunElevated(installerPath, "/S", Path.GetDirectoryName(installerPath)!);
+
+        int exitCode;
+        if (installerPath.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+        {
+            exitCode = RunElevated("msiexec.exe", $"/i \"{installerPath}\" /quiet /norestart", Path.GetDirectoryName(installerPath)!);
+        }
+        else
+        {
+            exitCode = RunElevated(installerPath, "/S", Path.GetDirectoryName(installerPath)!);
+        }
+
         if (exitCode != 0)
             throw new InvalidOperationException("WireGuard 驱动安装失败。");
 

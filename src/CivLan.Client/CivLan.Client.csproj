@@ -16,6 +16,9 @@
 
   <ItemGroup>
     <Content Include="wireguard\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="PLAYER_README.md" CopyToPublishDirectory="PreserveNewest">
+      <Link>README.md</Link>
+    </Content>
   </ItemGroup>
 
 </Project>

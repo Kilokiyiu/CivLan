@@ -73,10 +73,10 @@ dotnet build
 dotnet run --project src/CivLan.Client
 
 # 3. Release for friends
-dotnet publish src/CivLan.Client -c Release -o client-release
+.\scripts\publish-client-release.ps1 -Version 1.0.1
 ```
 
-Zip **`client-release`** and share with players.
+Upload **`CivLan.Client-v1.0.1-win-x64.zip`** to GitHub Releases (not source-only).
 
 ---
 
@@ -88,15 +88,18 @@ WireGuard binaries are **not** committed to this repo. Before publishing the cli
 |------|--------|
 | `wireguard.exe` | `C:\Program Files\WireGuard\` (after installing WireGuard once) |
 | `wg.exe` | same |
-| `wireguard-installer.exe` | [wireguard.com/install](https://www.wireguard.com/install/) |
+| **`wireguard-amd64.msi`** | [Browse MSIs](https://download.wireguard.com/windows-client/) — **required for offline driver install** |
 
-Or run (if WireGuard is installed locally):
+Do **not** rely on the 85 KB `wireguard-installer.exe` alone — it downloads the MSI online and often fails in China.
+
+One-command prepare + publish:
 
 ```powershell
-.\scripts\prepare-wireguard.ps1
+.\scripts\prepare-wireguard.ps1      # copy exe + download MSI
+.\scripts\publish-client-release.ps1   # publish, verify, zip -> CivLan.Client-v1.0.1-win-x64.zip
 ```
 
-Players only run **CivLan** — first VPN connect may request admin approval once to install the TUN driver.
+Players only run **CivLan** — first VPN connect installs the TUN driver once (admin UAC). No separate WireGuard install needed.
 
 ---
 
