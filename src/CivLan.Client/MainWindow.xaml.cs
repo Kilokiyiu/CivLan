@@ -24,7 +24,7 @@ public partial class MainWindow : Window
             "1. 填写服务器地址和 API Key\n" +
             "2. 创建或加入房间\n" +
             "3. 点击「连接 VPN」（内置 WireGuard，无需单独安装）\n" +
-            "4. 在文明6中使用「局域网」或「IP 直连」加入主机";
+            "4. 文明6 → 多人 → 局域网：主机创建游戏，队友刷新列表加入";
 
         Loaded += (_, _) => UpdateVpnStatus();
         Closing += MainWindow_Closing;

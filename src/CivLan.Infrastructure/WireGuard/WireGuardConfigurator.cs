@@ -90,15 +90,17 @@ public sealed class WireGuardConfigurator : IWireGuardConfigurator
 
     public string BuildClientConfig(string peerPrivateKey, string peerVirtualIp, string serverPublicKey)
     {
+        var subnet = $"{_options.NetworkPrefix}.0/24";
         var sb = new StringBuilder();
         sb.AppendLine("[Interface]");
         sb.AppendLine($"PrivateKey = {peerPrivateKey}");
-        sb.AppendLine($"Address = {peerVirtualIp}/32");
+        // /24 so Windows treats the tunnel as a LAN segment (required for Civ VI LAN discovery).
+        sb.AppendLine($"Address = {peerVirtualIp}/24");
         sb.AppendLine();
         sb.AppendLine("[Peer]");
         sb.AppendLine($"PublicKey = {serverPublicKey}");
         sb.AppendLine($"Endpoint = {EndpointHost}:{ListenPort}");
-        sb.AppendLine($"AllowedIPs = {_options.NetworkPrefix}.0/24");
+        sb.AppendLine($"AllowedIPs = {subnet}");
         sb.AppendLine("PersistentKeepalive = 25");
         return sb.ToString();
     }
@@ -111,10 +113,11 @@ public sealed class WireGuardConfigurator : IWireGuardConfigurator
         sb.AppendLine($"Address = {serverAddress}");
         sb.AppendLine($"ListenPort = {_options.ListenPort}");
         sb.AppendLine($"PrivateKey = {_options.ServerPrivateKey}");
+        var iface = _options.InterfaceName;
         sb.AppendLine(
-            $"PostUp = iptables -A FORWARD -i {_options.InterfaceName} -j ACCEPT; iptables -t nat -A POSTROUTING -o {_options.EgressInterface} -j MASQUERADE");
+            $"PostUp = sysctl -w net.ipv4.conf.{iface}.bcast_forward=1; iptables -A FORWARD -i {iface} -j ACCEPT; iptables -A FORWARD -i {iface} -o {iface} -j ACCEPT; iptables -t nat -A POSTROUTING -o {_options.EgressInterface} -j MASQUERADE");
         sb.AppendLine(
-            $"PostDown = iptables -D FORWARD -i {_options.InterfaceName} -j ACCEPT; iptables -t nat -D POSTROUTING -o {_options.EgressInterface} -j MASQUERADE");
+            $"PostDown = iptables -D FORWARD -i {iface} -j ACCEPT; iptables -D FORWARD -i {iface} -o {iface} -j ACCEPT; iptables -t nat -D POSTROUTING -o {_options.EgressInterface} -j MASQUERADE");
 
         foreach (var peer in rooms.SelectMany(r => r.Peers))
         {

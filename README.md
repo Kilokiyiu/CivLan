@@ -133,10 +133,17 @@ Players only run **CivLan** — first VPN connect installs the TUN driver once (
 
 ## How to Play Civ VI
 
+## How to Play Civ VI (LAN)
+
 1. Host: **Create room** → **Connect VPN**
 2. Friends: **Join room** (6-digit code) → **Connect VPN**
-3. Host: Civ VI → Multiplayer → **LAN** → Create game
-4. Others: Join LAN list, or **Connect via IP** → host virtual IP (shown in client)
+3. **Reconnect VPN once** after upgrading to v1.0.3+ (applies `/24` LAN subnet config)
+4. Host: Civ VI → Multiplayer → **LAN** → Create game
+5. Friends: Civ VI → Multiplayer → **LAN** → refresh list
+
+On VPS (once): `sudo bash deploy/enable-civ6-lan.sh`
+
+If LAN list is empty, ping host virtual IP (e.g. `10.0.0.2`) to verify VPN peer connectivity.
 
 Ensure game version, DLC, and mods match.
 
