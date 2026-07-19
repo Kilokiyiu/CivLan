@@ -235,7 +235,11 @@ public partial class MainWindow : Window
         UpdateVpnStatus();
         StatusMessageTextBlock.Text = "VPN 已连接。可以启动文明6 并联机。";
         MessageBox.Show(
-            "VPN 连接成功！\n\n主机请在文明6中创建「局域网」游戏，其他人用「IP 直连」加入。",
+            "VPN 连接成功！\n\n" +
+            "局域网联机步骤：\n" +
+            "1. 主机：文明6 → 多人 → 局域网 → 创建游戏\n" +
+            "2. 队友：文明6 → 多人 → 局域网 → 点击刷新\n\n" +
+            "若列表仍为空：双方断开并重连 VPN，确认服主已在 VPS 运行 enable-civ6-lan.sh。",
             "CivLan",
             MessageBoxButton.OK,
             MessageBoxImage.Information);

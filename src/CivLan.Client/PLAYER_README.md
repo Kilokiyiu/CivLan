@@ -18,11 +18,13 @@
 2. 主机：**创建房间** → **连接 VPN**
 3. 队友：**加入房间** → **连接 VPN**
 4. 文明6 → **多人游戏** → **局域网**
-5. 主机：**创建游戏**；队友：点击刷新，等待房间出现在列表中
+5. 主机：**创建游戏**；队友：点击刷新，等待房间出现
 
-> 升级到 v1.0.3 后，请先 **断开 VPN 再重新连接** 一次，以应用局域网所需的网络配置。
+> 必须使用 **v1.0.4+**，升级后请 **断开 VPN 再重连** 一次。
+>
+> 服主必须在 VPS 执行：`sudo bash deploy/enable-civ6-lan.sh`（安装 UDP 广播中继）。
+> 仅改客户端、不装中继，局域网列表仍会为空。
 
-> 服主需在 VPS 上执行一次：`sudo bash deploy/enable-civ6-lan.sh`
 ## 目录结构（勿删改）
 
 ```
@@ -39,4 +41,5 @@ wireguard/
 |------|------|
 | Download Error | 请下载含 MSI 的新版 Release，或手动双击 `wireguard\*.msi` 装驱动 |
 | VPN 连接失败 | 确认点了 UAC「是」；路径不要有中文 |
-| 局域网刷不出房间 | 升级 v1.0.3+，断开并重连 VPN；服主在 VPS 运行 enable-civ6-lan.sh |
+| 找不到服务器 | 检查服务器地址、API Key、防火墙 |
+| 局域网刷不出房间 | 确认双方已重连 VPN；服主在 VPS 运行 `enable-civ6-lan.sh`；`systemctl status civlan-lan-relay` 为 running |

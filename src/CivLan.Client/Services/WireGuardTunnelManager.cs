@@ -98,7 +98,8 @@ public sealed class WireGuardTunnelManager
             await Task.Delay(500);
             if (IsTunnelServiceRunning(roomCode))
             {
-                progress?.Report("VPN 已连接。");
+                LanNetworkHelper.ConfigureForCivViLan(progress);
+                progress?.Report("VPN 已连接。可在文明6中使用「局域网」刷新房间。");
                 return;
             }
         }

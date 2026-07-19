@@ -100,7 +100,8 @@ public sealed class WireGuardConfigurator : IWireGuardConfigurator
         sb.AppendLine("[Peer]");
         sb.AppendLine($"PublicKey = {serverPublicKey}");
         sb.AppendLine($"Endpoint = {EndpointHost}:{ListenPort}");
-        sb.AppendLine($"AllowedIPs = {subnet}");
+        // Civ VI sends discovery to 255.255.255.255 — must enter the tunnel, then VPS relays to peers.
+        sb.AppendLine($"AllowedIPs = {subnet}, 255.255.255.255/32");
         sb.AppendLine("PersistentKeepalive = 25");
         return sb.ToString();
     }
